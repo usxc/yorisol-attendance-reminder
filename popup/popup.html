@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yorisol Attendance Reminder</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="popup-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Yorisol Reminder</p>
+        <h1>出席確認</h1>
+      </div>
+      <p id="today" class="date-pill"></p>
+    </header>
+
+    <div class="toolbar">
+      <button id="openOptionsButton">設定</button>
+      <button id="rebuildButton">再スケジュール</button>
+    </div>
+
+    <section id="slots" class="slot-list"></section>
+
+    <footer class="summary">
+      <p id="nextCheck"></p>
+      <p id="status"></p>
+    </footer>
+  </main>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
