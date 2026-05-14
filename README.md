@@ -22,11 +22,21 @@ popupでは、今日の日付、今日の授業一覧、授業時間、確認予
 
 ## 初期セットアップ
 
+任意の作業用ディレクトリに移動して、このリポジトリを clone します。
+以下では `~/dev` に保存する例を示します。
+
+```bash
+mkdir -p ~/dev && cd ~/dev && git clone https://github.com/usxc/yorisol-attendance-reminder.git
+cd yorisol-attendance-reminder
+```
+
+ローカル設定ファイルを生成します。
+
 ```bash
 node scripts/setup-local.mjs
 ```
 
-サブドメイン部分だけを入力します。
+実行時に、ヨリソルURLのサブドメイン部分だけを入力します。
 
 このコマンドで以下が生成されます。
 
