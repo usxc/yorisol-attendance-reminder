@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2026-04-13",
+    "weekday": "月",
+    "period": 1,
+    "start": "09:20",
+    "end": "10:50",
+    "subject": "サンプル授業A",
+    "kind": "class",
+    "attendance_enabled": true,
+    "yorisol_subject": "【2026年度】サンプル授業A",
+    "yorisol_search_subject": "サンプル授業A"
+  },
+  {
+    "date": "2026-04-13",
+    "weekday": "月",
+    "period": 2,
+    "start": "11:00",
+    "end": "12:30",
+    "subject": "学校行事",
+    "kind": "event",
+    "attendance_enabled": false,
+    "yorisol_subject": null,
+    "yorisol_search_subject": null
+  }
+]
