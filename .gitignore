@@ -1,0 +1,23 @@
+# local-only Chrome extension files
+manifest.json
+config/config.local.js
+
+# private timetable data
+data/
+*.pdf
+timetable_*.json
+course_mapping_*.json
+
+# packaged extension files
+dist/
+*.zip
+*.crx
+
+# logs / debug
+logs/
+*.log
+
+# dependencies / OS / editor
+node_modules/
+.DS_Store
+.vscode/
