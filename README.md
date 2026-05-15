@@ -39,14 +39,22 @@ cd yorisol-attendance-reminder
 node scripts/setup-local.mjs
 ```
 
-実行時に、ヨリソルURLのサブドメイン部分だけを入力します。
+実行すると、ヨリソルURLのサブドメイン部分の入力を求められます。
 
-このコマンドで以下が生成されます。
+たとえばヨリソルURLが `https://example.yorisoar.net/...` の場合は、`example` だけを入力します。
 
-- `manifest.json`
-- `config/config.local.js`
+以下のように入力すると、`manifest.json` と `config/config.local.js` が生成されます。
 
-これらはGit管理対象外です。
+```text
+Yorisoar subdomain: example
+Generated: manifest.json
+Generated: config/config.local.js
+
+ローカル設定ファイルを生成しました。
+manifest.json と config/config.local.js はGitにコミットしないでください。
+```
+
+生成される `manifest.json` と `config/config.local.js` はGit管理対象外です。
 
 ## Chromeへの読み込み
 
