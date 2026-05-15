@@ -27,7 +27,9 @@ popupでは、今日の日付、今日の授業一覧、授業時間、確認予
 以下では `~/dev` に保存する例を示します。
 
 ```bash
-mkdir -p ~/dev && cd ~/dev && git clone https://github.com/usxc/yorisol-attendance-reminder.git
+mkdir -p ~/dev
+cd ~/dev
+git clone https://github.com/usxc/yorisol-attendance-reminder.git
 cd yorisol-attendance-reminder
 ```
 
