@@ -112,7 +112,8 @@ manifest.json と config/config.local.js はGitにコミットしないでくだ
 
 `attendance_enabled: true` の授業だけが通知対象です。
 
-`yorisol_subject` はpopupなどの表示に使います。`yorisol_search_subject` はヨリソルDOM内で授業を探す検索キーと、同日同一授業の `targetKoma` 計算に使います。現在の運用では、上の例のように2つを同じ値にして問題ありません。
+`yorisol_subject` はpopupなどの表示に使います。
+`yorisol_search_subject` はヨリソルDOM内で授業を探す検索キーと、同日同一授業の `targetKoma` 計算に使います。現在の運用では、上の例のように2つを同じ値にして問題ありません。
 
 ## 通知スケジュール
 
@@ -122,8 +123,6 @@ manifest.json と config/config.local.js はGitにコミットしないでくだ
 
 - `09:20` 開始 → `09:25` 確認
 - `11:00` 開始 → `11:05` 確認
-- `13:20` 開始 → `13:25` 確認
-- `15:00` 開始 → `15:05` 確認
 
 スケジュールは、少なくとも今日と明日の分だけ登録します。全年度分を一括でalarm登録しません。
 
@@ -155,29 +154,6 @@ attendance:2026-04-13:1
 11. 確認完了後、確認専用タブを閉じる
 
 ログイン切れでSSO画面に飛ばされた場合は、確認専用タブを閉じずに残します。通知をクリックすると、そのタブを前面に出せます。
-
-## 確認結果の扱い
-
-- `already_attended`: 通知しない、確認タブを閉じる
-- `need_attend`: 通知する、確認タブを閉じる
-- `no_button`: 通知しない、ログに残す、確認タブを閉じる
-- `course_not_found`: 通知しない、ログに残す、確認タブを閉じる
-- `node_not_found`: 通知しない、ログに残す、確認タブを閉じる
-- `multiple_buttons`: 通知する、ボタンは押さない、確認タブを閉じる
-- `login_required`: 通知する、確認タブを残す
-- `error`: ログに残す、必要に応じて通知する、確認タブを閉じる
-
-## targetKoma
-
-同じ日付に同じ `yorisol_search_subject` の授業が複数ある場合、時限順に何件目かを数えて `targetKoma` にします。
-
-計算キーは以下です。
-
-```text
-date + yorisol_search_subject
-```
-
-たとえば同じ日に `【2026年度】サンプル授業A` が2コマある場合、1つ目は `targetKoma = 1`、2つ目は `targetKoma = 2` になります。`targetKoma` は内部確認用で、popupには表示しません。
 
 ## ログ
 
