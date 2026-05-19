@@ -68,7 +68,7 @@ async function render() {
       ]),
       element("div", { className: "slot-status" }, [
         element("span", { className: `badge ${enabled ? "on" : "off"}` }, enabled ? "確認対象" : "対象外"),
-        element("span", { className: "badge result" }, formatLastResult(last))
+        element("span", { className: `badge result ${resultBadgeClass(last)}`.trim() }, formatLastResult(last))
       ]),
       element("div", { className: "slot-actions" }, [
         buildRunButton(slot, Boolean(target))
@@ -128,6 +128,14 @@ function formatLastResult(last) {
   return checkedAt
     ? `${statusLabel(last.status)} ${checkedAt}`
     : statusLabel(last.status);
+}
+
+function resultBadgeClass(last) {
+  const classes = {
+    already_attended: "already-attended",
+    need_attend: "need-attend"
+  };
+  return classes[last?.status] || "";
 }
 
 function formatCheckedAt(value) {

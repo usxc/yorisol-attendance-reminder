@@ -165,9 +165,8 @@ button:disabled {
 }
 
 .badge.on {
-  border-color: #8ac79d;
-  background: #eef9f1;
-  color: #23683a;
+  border-color: #cdd8e6;
+  color: #334e68;
 }
 
 .badge.off {
@@ -179,6 +178,18 @@ button:disabled {
 .badge.result {
   border-color: #cdd8e6;
   color: #334e68;
+}
+
+.badge.result.already-attended {
+  border-color: #8ac79d;
+  background: #eef9f1;
+  color: #23683a;
+}
+
+.badge.result.need-attend {
+  border-color: #e07171;
+  background: #fff1f1;
+  color: #b42318;
 }
 
 .summary {
