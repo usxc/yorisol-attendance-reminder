@@ -6,6 +6,14 @@
 
 また、確認時刻になると、拡張機能がヨリソル確認用のタブを自動で開きます。このタブは出席状態を確認するために必要なので、確認が終わって自動で閉じるまでは手動で閉じないでください。ログイン切れの場合はタブを閉じずに残し、通知をクリックするとそのタブを前面に出せます。
 
+## 対応ブラウザ
+
+この拡張機能は Google Chrome での利用を主な対象としています。
+
+Brave や Microsoft Edge などの Chromium 系デスクトップブラウザでも利用できる可能性がありますが、ブラウザごとの差異により挙動が異なる場合があります。
+
+Firefox、Safari、モバイル版ブラウザは対象外です。
+
 ## スクリーンショット
 
 ### Popup
@@ -24,11 +32,20 @@ popupでは、今日の日付、今日の授業一覧、授業時間、確認予
 
 ![未出席通知](docs/images/notification-need-attend.png)
 
-確認時に出席ボタンがまだ押されていない状態だと判定された場合は、Chrome の通知で対象の時限・授業名を表示します。
+確認時に出席ボタンがまだ押されていない状態だと判定された場合は、ブラウザの通知で対象の時限・授業名を表示します。
+
+## 事前準備
+
+以下をインストールしておいてください。
+
+- Git
+- Node.js
 
 ## 初期セットアップ
 
 任意の作業用ディレクトリに移動して、このリポジトリを clone します。
+
+### macOS / Linux / Git Bash の場合
 
 以下では `~/dev` に保存する例を示します。
 
@@ -43,6 +60,23 @@ cd yorisol-attendance-reminder
 
 ```bash
 node scripts/setup-local.mjs
+```
+
+### Windows PowerShell の場合
+
+以下では、ユーザーフォルダ直下の `dev` に保存する例を示します。
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME\dev" | Out-Null
+Set-Location "$HOME\dev"
+git clone https://github.com/usxc/yorisol-attendance-reminder.git
+Set-Location .\yorisol-attendance-reminder
+```
+
+ローカル設定ファイルを生成します。
+
+```powershell
+node .\scripts\setup-local.mjs
 ```
 
 実行すると、ヨリソルURLのサブドメイン部分の入力を求められます。
@@ -62,12 +96,28 @@ manifest.json と config/config.local.js はGitにコミットしないでくだ
 
 生成される `manifest.json` と `config/config.local.js` はGit管理対象外です。
 
-## Chromeへの読み込み
+## ブラウザへの読み込み
+
+### Google Chrome の場合
 
 1. `chrome://extensions` を開く
 2. デベロッパーモードをON
-3. 「パッケージ化されていない拡張機能を読み込む」
-4. このフォルダを選択
+3. 「パッケージ化されていない拡張機能を読み込む」を選択
+4. このリポジトリのフォルダを選択
+
+### Brave の場合
+
+1. `brave://extensions` を開く
+2. デベロッパーモードをON
+3. 「Load unpacked」または「パッケージ化されていない拡張機能を読み込む」を選択
+4. このリポジトリのフォルダを選択
+
+### Microsoft Edge の場合
+
+1. `edge://extensions` を開く
+2. デベロッパーモードをON
+3. 「展開して読み込み」または「Load unpacked」を選択
+4. このリポジトリのフォルダを選択
 
 ## 時間割JSONの読み込み
 
@@ -113,6 +163,7 @@ manifest.json と config/config.local.js はGitにコミットしないでくだ
 `attendance_enabled: true` の授業だけが通知対象です。
 
 `yorisol_subject` はpopupなどの表示に使います。
+
 `yorisol_search_subject` はヨリソルDOM内で授業を探す検索キーと、同日同一授業の `targetKoma` 計算に使います。現在の運用では、上の例のように2つを同じ値にして問題ありません。
 
 ## 通知スケジュール
@@ -129,7 +180,7 @@ manifest.json と config/config.local.js はGitにコミットしないでくだ
 通知スケジュールは以下のタイミングで自動再作成されます。
 
 - 拡張機能インストール時
-- Chrome起動時
+- ブラウザ起動時
 - 時間割JSON保存時
 - 毎日 `0:05`
 
