@@ -325,8 +325,13 @@ export async function checkAttendanceInPage(args) {
       1800
     ).catch(() => null);
 
-    const searchRoots = [pane, modal].filter(Boolean);
-    const attendance = await waitForAttendanceState(() => searchRoots, 2200);
+    if (!pane) {
+      return result("node_not_found", "対象node本文が見つかりませんでした。", {
+        lessonText
+      });
+    }
+
+    const attendance = await waitForAttendanceState(() => [pane], 2200);
 
     if (attendance.state === "attended") {
       return result("already_attended", "すでに出席済みです。", {
