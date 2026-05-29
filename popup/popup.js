@@ -3,7 +3,7 @@ import { getLastResults, getLastScheduleBuiltAt, getTimetable } from "../lib/sto
 import { addMinutes, dateTimeFromDateAndTime, formatLocalDate, toDisplayDate } from "../lib/dateTime.js";
 import { getDisplaySubject, getSlotsForDate, isAttendanceEnabledSlot } from "../lib/timetable.js";
 import { buildSlotId, buildTargetsForDate } from "../lib/occurrence.js";
-import { listAttendanceAlarms } from "../lib/scheduler.js";
+import { listAttendanceAlarms, parseAttendanceAlarmName } from "../lib/scheduler.js";
 
 const todayEl = document.getElementById("today");
 const slotsEl = document.getElementById("slots");
@@ -108,7 +108,9 @@ function renderNextCheck(alarms, lastScheduleBuiltAt) {
     return;
   }
 
-  nextCheckEl.textContent = `次回確認予定: ${formatDateTime(new Date(next.scheduledTime))}`;
+  const parsed = parseAttendanceAlarmName(next.name);
+  const retryLabel = parsed?.retryAttempt ? "（再確認）" : "";
+  nextCheckEl.textContent = `次回確認予定: ${formatDateTime(new Date(next.scheduledTime))}${retryLabel}`;
 }
 
 function formatTime(date) {
