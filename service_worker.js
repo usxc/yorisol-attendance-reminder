@@ -1,9 +1,10 @@
 import { TARGET_URL } from "./config/config.local.js";
-import { ATTENDANCE_STATUSES, DAILY_REBUILD_ALARM } from "./lib/constants.js";
-import { clearScheduledAlarms, parseAttendanceAlarmName, rebuildAlarms } from "./lib/scheduler.js";
+import { ATTENDANCE_STATUSES, DAILY_REBUILD_ALARM, MAX_AUTO_RETRY_ATTEMPTS, RETRY_DELAY_MINUTES } from "./lib/constants.js";
+import { clearScheduledAlarms, parseAttendanceAlarmName, rebuildAlarms, scheduleRetryAlarm } from "./lib/scheduler.js";
 import { clearTimetable, getNotificationPayload, getSettings, getTimetable, appendLog, removeNotificationPayload, setLastResult } from "./lib/storage.js";
 import { getTargetForSlot } from "./lib/occurrence.js";
-import { closeTabIfExists, focusTab, isSubjectPageUrl, openInactiveCheckTab, runAttendanceCheckInTab, waitForTabComplete } from "./lib/yorisolTab.js";
+import { dateTimeFromDateAndTime } from "./lib/dateTime.js";
+import { closeTabIfExists, focusTab, isSubjectPageUrl, isTabClosedError, openInactiveCheckTab, runAttendanceCheckInTab, waitForTabComplete } from "./lib/yorisolTab.js";
 import { notifyCheckError, notifyLoginRequired, notifyMultipleButtons, notifyNeedAttend } from "./lib/notifications.js";
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -23,7 +24,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   const parsed = parseAttendanceAlarmName(alarm.name);
   if (!parsed) return;
 
-  runCheckForSlot(parsed.date, parsed.period).catch((error) => {
+  runCheckForSlot(parsed.date, parsed.period, { retryAttempt: parsed.retryAttempt }).catch((error) => {
     appendLog("error", "アラーム発火後の出席確認に失敗しました。", {
       alarmName: alarm.name,
       error: String(error?.message || error)
@@ -72,7 +73,14 @@ async function runCheckForSlot(dateString, period, options = {}) {
     getTimetable()
   ]);
 
-  await appendLog("info", "alarm発火", { date: dateString, period: Number(period), manual: Boolean(options.manual) });
+  const retryAttempt = Number(options.retryAttempt || 0);
+
+  await appendLog("info", "alarm発火", {
+    date: dateString,
+    period: Number(period),
+    manual: Boolean(options.manual),
+    retryAttempt
+  });
 
   const target = getTargetForSlot(timetable, dateString, period);
   if (!target) {
@@ -132,20 +140,69 @@ async function runCheckForSlot(dateString, period, options = {}) {
       await appendLog("info", "出席確認結果", { target, result });
     }
 
+    await scheduleRetryIfNeeded(target, result, { ...options, retryAttempt });
     return result;
   } catch (error) {
     const message = String(error?.message || error);
-    await setLastResult(target.slotId, { status: ATTENDANCE_STATUSES.ERROR, message });
-    await appendLog("error", "エラー", { target, error: message });
+    const result = {
+      status: isTabClosedError(error) ? ATTENDANCE_STATUSES.TAB_CLOSED : ATTENDANCE_STATUSES.ERROR,
+      message
+    };
+    await setLastResult(target.slotId, result);
+    await appendLog("error", "エラー", { target, result });
     if (options.manual) {
       await notifyCheckError(target, message);
     }
-    return { status: ATTENDANCE_STATUSES.ERROR, message };
+    await scheduleRetryIfNeeded(target, result, { ...options, retryAttempt });
+    return result;
   } finally {
     if (tabId && !keepTabOpen && settings.closeCheckTabWhenDone) {
       await closeTabIfExists(tabId);
     }
   }
+}
+
+async function scheduleRetryIfNeeded(target, result, options = {}) {
+  if (options.manual || !shouldRetryResult(result)) {
+    return;
+  }
+
+  const nextRetryAttempt = Number(options.retryAttempt || 0) + 1;
+  if (nextRetryAttempt > MAX_AUTO_RETRY_ATTEMPTS) {
+    await appendLog("info", "自動再確認は上限に達したため予約しません。", {
+      target,
+      result,
+      retryAttempt: options.retryAttempt || 0
+    });
+    return;
+  }
+
+  const when = Date.now() + RETRY_DELAY_MINUTES * 60 * 1000;
+  const classEnd = dateTimeFromDateAndTime(target.date, target.end);
+  if (Number.isFinite(classEnd.getTime()) && when > classEnd.getTime()) {
+    await appendLog("info", "授業終了時刻を過ぎるため自動再確認は予約しません。", {
+      target,
+      result,
+      retryAt: new Date(when).toISOString()
+    });
+    return;
+  }
+
+  await scheduleRetryAlarm(target.date, target.period, nextRetryAttempt, when);
+  await appendLog("info", "5分後の自動再確認を予約しました。", {
+    target,
+    result,
+    retryAttempt: nextRetryAttempt,
+    retryAt: new Date(when).toISOString()
+  });
+}
+
+function shouldRetryResult(result) {
+  return [
+    ATTENDANCE_STATUSES.NO_BUTTON,
+    ATTENDANCE_STATUSES.NODE_NOT_FOUND,
+    ATTENDANCE_STATUSES.TAB_CLOSED
+  ].includes(result?.status);
 }
 
 async function handleNotificationClick(notificationId) {

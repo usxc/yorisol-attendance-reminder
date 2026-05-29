@@ -166,6 +166,7 @@ function statusLabel(status) {
     node_not_found: "日付なし",
     multiple_buttons: "要確認",
     login_required: "ログイン必要",
+    tab_closed: "タブ閉鎖",
     error: "エラー",
     skipped: "対象外"
   };
