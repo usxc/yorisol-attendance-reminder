@@ -4,7 +4,7 @@ import { clearScheduledAlarms, parseAttendanceAlarmName, rebuildAlarms, schedule
 import { clearTimetable, getNotificationPayload, getSettings, getTimetable, appendLog, removeNotificationPayload, setLastResult } from "./lib/storage.js";
 import { getTargetForSlot } from "./lib/occurrence.js";
 import { dateTimeFromDateAndTime } from "./lib/dateTime.js";
-import { closeTabIfExists, focusTab, isSubjectPageUrl, isTabClosedError, openInactiveCheckTab, runAttendanceCheckInTab, waitForTabComplete } from "./lib/yorisolTab.js";
+import { closeTabIfExists, focusTab, isSubjectPageUrl, isTabClosedError, openActiveTargetTab, openInactiveCheckTab, revealAttendanceTargetInTab, runAttendanceCheckInTab, waitForTabComplete } from "./lib/yorisolTab.js";
 import { notifyCheckError, notifyLoginRequired, notifyMultipleButtons, notifyNeedAttend } from "./lib/notifications.js";
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -215,5 +215,36 @@ async function handleNotificationClick(notificationId) {
     return;
   }
 
+  if (shouldRevealAttendanceTarget(payload)) {
+    await openAttendanceTargetFromNotification(payload);
+    return;
+  }
+
   await chrome.tabs.create({ url: TARGET_URL, active: true });
+}
+
+function shouldRevealAttendanceTarget(payload) {
+  return (
+    payload?.target &&
+    ["need_attend", "multiple_buttons"].includes(payload.kind)
+  );
+}
+
+async function openAttendanceTargetFromNotification(payload) {
+  const tab = await openActiveTargetTab();
+  const loadedTab = await waitForTabComplete(tab.id, 45000);
+
+  if (!isSubjectPageUrl(loadedTab.url || "")) {
+    await appendLog("warning", "通知クリック後、対象ページを開けませんでした。", {
+      target: payload.target,
+      url: loadedTab.url || ""
+    });
+    return;
+  }
+
+  const result = await revealAttendanceTargetInTab(tab.id, payload.target);
+  await appendLog("info", "通知クリックで出席ボタン位置へ移動しました。", {
+    target: payload.target,
+    result
+  });
 }

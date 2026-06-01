@@ -2,6 +2,7 @@ export async function checkAttendanceInPage(args) {
   const TARGET_COURSE_NAME = args?.targetCourseName || "";
   const TARGET_DATE = args?.targetDate || "";
   const TARGET_KOMA = Number(args?.targetKoma || 0);
+  const REVEAL_ATTENDANCE_TARGET = args?.revealAttendanceTarget === true;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -238,6 +239,68 @@ export async function checkAttendanceInPage(args) {
     );
   }
 
+  function revealElement(el) {
+    if (!REVEAL_ATTENDANCE_TARGET || !el) return;
+
+    el.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
+
+    if (typeof el.focus === "function") {
+      try {
+        el.focus({ preventScroll: true });
+      } catch {
+        el.focus();
+      }
+    }
+
+    if (isAttendanceButton(el)) {
+      spotlightElement(el);
+    }
+  }
+
+  function isAttendanceButton(el) {
+    return el.matches?.("button.js-subject-lesson-attend, button.js-subject-lesson-attended") === true;
+  }
+
+  function spotlightElement(el) {
+    if (typeof el.animate === "function") {
+      el.animate(
+        [
+          {
+            outline: "3px solid rgba(255, 193, 7, 0.95)",
+            outlineOffset: "2px",
+            boxShadow: "0 0 0 0 rgba(255, 193, 7, 0.45)"
+          },
+          {
+            outline: "3px solid rgba(255, 193, 7, 0.95)",
+            outlineOffset: "5px",
+            boxShadow: "0 0 0 8px rgba(255, 193, 7, 0.25)"
+          },
+          {
+            outline: "3px solid rgba(255, 193, 7, 0.95)",
+            outlineOffset: "2px",
+            boxShadow: "0 0 0 0 rgba(255, 193, 7, 0.45)"
+          }
+        ],
+        { duration: 900, iterations: 2 }
+      );
+      return;
+    }
+
+    const previousOutline = el.style.outline;
+    const previousOutlineOffset = el.style.outlineOffset;
+    const previousBoxShadow = el.style.boxShadow;
+
+    el.style.outline = "3px solid rgba(255, 193, 7, 0.95)";
+    el.style.outlineOffset = "4px";
+    el.style.boxShadow = "0 0 0 6px rgba(255, 193, 7, 0.3)";
+
+    setTimeout(() => {
+      el.style.outline = previousOutline;
+      el.style.outlineOffset = previousOutlineOffset;
+      el.style.boxShadow = previousBoxShadow;
+    }, 1800);
+  }
+
   try {
     if (looksLikeLoginPage()) {
       return result("login_required", "ヨリソルにログインしてください");
@@ -331,9 +394,12 @@ export async function checkAttendanceInPage(args) {
       });
     }
 
+    revealElement(pane);
+
     const attendance = await waitForAttendanceState(() => [pane], 2200);
 
     if (attendance.state === "attended") {
+      revealElement(attendance.button);
       return result("already_attended", "すでに出席済みです。", {
         lessonText,
         buttonText: textOf(attendance.button)
@@ -351,6 +417,7 @@ export async function checkAttendanceInPage(args) {
     }
 
     if (attendance.count !== 1) {
+      revealElement(attendance.buttons[0]);
       return result("multiple_buttons", "出席ボタンが複数あります。手動確認してください。", {
         lessonText,
         debug: { buttonCount: attendance.count }
@@ -361,6 +428,7 @@ export async function checkAttendanceInPage(args) {
     const buttonText = textOf(button);
 
     if (isDisabledButton(button)) {
+      revealElement(button);
       return result("no_button", "出席ボタンが無効状態です。", {
         lessonText,
         buttonText
@@ -368,12 +436,14 @@ export async function checkAttendanceInPage(args) {
     }
 
     if (!buttonText.includes("出席する")) {
+      revealElement(button);
       return result("error", "ボタン文言が想定外です。", {
         lessonText,
         buttonText
       });
     }
 
+    revealElement(button);
     return result("need_attend", "出席ボタンがあります。通知対象です。", {
       lessonText,
       buttonText
