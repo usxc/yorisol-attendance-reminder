@@ -41,6 +41,16 @@ chrome.notifications.onClicked.addListener((notificationId) => {
   });
 });
 
+chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+  handleNotificationButtonClick(notificationId, buttonIndex).catch((error) => {
+    appendLog("error", "通知ボタンクリック処理に失敗しました。", {
+      notificationId,
+      buttonIndex,
+      error: String(error?.message || error)
+    });
+  });
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   handleMessage(message)
     .then((result) => sendResponse({ ok: true, result }))
@@ -223,6 +233,18 @@ async function handleNotificationClick(notificationId) {
   await chrome.tabs.create({ url: TARGET_URL, active: true });
 }
 
+async function handleNotificationButtonClick(notificationId, buttonIndex) {
+  if (buttonIndex !== 0) {
+    await appendLog("info", "未対応の通知ボタンがクリックされました。", {
+      notificationId,
+      buttonIndex
+    });
+    return;
+  }
+
+  await handleNotificationClick(notificationId);
+}
+
 function shouldRevealAttendanceTarget(payload) {
   return (
     payload?.target &&
@@ -231,20 +253,54 @@ function shouldRevealAttendanceTarget(payload) {
 }
 
 async function openAttendanceTargetFromNotification(payload) {
-  const tab = await openActiveTargetTab();
-  const loadedTab = await waitForTabComplete(tab.id, 45000);
+  try {
+    const tab = await openActiveTargetTab();
+    await runUntilTabClosed(tab.id, async () => {
+      const loadedTab = await waitForTabComplete(tab.id, 45000);
 
-  if (!isSubjectPageUrl(loadedTab.url || "")) {
-    await appendLog("warning", "通知クリック後、対象ページを開けませんでした。", {
-      target: payload.target,
-      url: loadedTab.url || ""
+      if (!isSubjectPageUrl(loadedTab.url || "")) {
+        await appendLog("warning", "通知クリック後、対象ページを開けませんでした。", {
+          target: payload.target,
+          url: loadedTab.url || ""
+        });
+        return;
+      }
+
+      const result = await revealAttendanceTargetInTab(tab.id, payload.target);
+      await appendLog("info", "通知クリックで出席ボタン位置へ移動しました。", {
+        target: payload.target,
+        result
+      });
     });
-    return;
-  }
+  } catch (error) {
+    if (!isTabClosedError(error)) {
+      throw error;
+    }
 
-  const result = await revealAttendanceTargetInTab(tab.id, payload.target);
-  await appendLog("info", "通知クリックで出席ボタン位置へ移動しました。", {
-    target: payload.target,
-    result
+    const message = "確認用タブが閉じられました。";
+    await appendLog("error", "通知クリック後の確認用タブが閉じられました。", {
+      target: payload.target,
+      error: String(error?.message || error)
+    });
+    await notifyCheckError(payload.target, message);
+  }
+}
+
+async function runUntilTabClosed(tabId, task) {
+  let removeListener = null;
+  const tabClosed = new Promise((_, reject) => {
+    const listener = (closedTabId) => {
+      if (closedTabId === tabId) {
+        reject(new Error("確認用タブが閉じられました。"));
+      }
+    };
+    removeListener = () => chrome.tabs.onRemoved.removeListener(listener);
+    chrome.tabs.onRemoved.addListener(listener);
   });
+
+  try {
+    return await Promise.race([task(), tabClosed]);
+  } finally {
+    removeListener?.();
+  }
 }
