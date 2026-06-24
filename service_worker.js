@@ -5,7 +5,7 @@ import { clearTimetable, getNotificationPayload, getSettings, getTimetable, appe
 import { getTargetForSlot } from "./lib/occurrence.js";
 import { dateTimeFromDateAndTime } from "./lib/dateTime.js";
 import { closeTabIfExists, focusTab, isSubjectPageUrl, isTabClosedError, openActiveTargetTab, openInactiveCheckTab, revealAttendanceTargetInTab, runAttendanceCheckInTab, waitForTabComplete } from "./lib/yorisolTab.js";
-import { notifyCheckError, notifyLoginRequired, notifyMultipleButtons, notifyNeedAttend } from "./lib/notifications.js";
+import { notifyCheckError, notifyLoginRequired, notifyMultipleButtons, notifyNeedAttend, notifyNoButton } from "./lib/notifications.js";
 
 chrome.runtime.onInstalled.addListener(() => {
   rebuildAlarms().catch((error) => appendLog("error", "インストール時のスケジュール作成に失敗しました。", { error: String(error?.message || error) }));
@@ -131,9 +131,14 @@ async function runCheckForSlot(dateString, period, options = {}) {
     const result = await runAttendanceCheckInTab(tabId, target);
     await setLastResult(target.slotId, result);
 
+    const retry = await scheduleRetryIfNeeded(target, result, { ...options, retryAttempt });
+
     if (result.status === ATTENDANCE_STATUSES.NEED_ATTEND) {
       await notifyNeedAttend(target, result);
       await appendLog("warning", "出席確認結果", { target, result });
+    } else if (result.status === ATTENDANCE_STATUSES.NO_BUTTON) {
+      await notifyNoButton(target, result, buildNoButtonNotificationOptions({ ...options, retryAttempt }, retry));
+      await appendLog("warning", "出席確認結果", { target, result, retry });
     } else if (result.status === ATTENDANCE_STATUSES.MULTIPLE_BUTTONS) {
       await notifyMultipleButtons(target, result);
       await appendLog("warning", "出席確認結果", { target, result });
@@ -150,7 +155,6 @@ async function runCheckForSlot(dateString, period, options = {}) {
       await appendLog("info", "出席確認結果", { target, result });
     }
 
-    await scheduleRetryIfNeeded(target, result, { ...options, retryAttempt });
     return result;
   } catch (error) {
     const message = String(error?.message || error);
@@ -174,39 +178,69 @@ async function runCheckForSlot(dateString, period, options = {}) {
 
 async function scheduleRetryIfNeeded(target, result, options = {}) {
   if (options.manual || !shouldRetryResult(result)) {
-    return;
+    return {
+      scheduled: false,
+      reason: options.manual ? "manual" : "not_retryable"
+    };
   }
 
-  const nextRetryAttempt = Number(options.retryAttempt || 0) + 1;
+  const currentRetryAttempt = Number(options.retryAttempt || 0);
+  const nextRetryAttempt = currentRetryAttempt + 1;
   if (nextRetryAttempt > MAX_AUTO_RETRY_ATTEMPTS) {
+    const retry = {
+      scheduled: false,
+      reason: "max_attempts",
+      retryAttempt: currentRetryAttempt
+    };
     await appendLog("info", "自動再確認は上限に達したため予約しません。", {
       target,
       result,
-      retryAttempt: options.retryAttempt || 0
+      retryAttempt: currentRetryAttempt
     });
-    return;
+    return retry;
   }
 
   const when = Date.now() + RETRY_DELAY_MINUTES * 60 * 1000;
+  const retryAt = new Date(when).toISOString();
   const classEnd = dateTimeFromDateAndTime(target.date, target.end);
   if (Number.isFinite(classEnd.getTime()) && when > classEnd.getTime()) {
+    const retry = {
+      scheduled: false,
+      reason: "class_ended",
+      retryAt
+    };
     await appendLog("info", "授業終了時刻を過ぎるため自動再確認は予約しません。", {
       target,
       result,
-      retryAt: new Date(when).toISOString()
+      retryAt
     });
-    return;
+    return retry;
   }
 
   await scheduleRetryAlarm(target.date, target.period, nextRetryAttempt, when);
+  const retry = {
+    scheduled: true,
+    reason: "scheduled",
+    retryAttempt: nextRetryAttempt,
+    retryAt
+  };
   await appendLog("info", "5分後の自動再確認を予約しました。", {
     target,
     result,
     retryAttempt: nextRetryAttempt,
-    retryAt: new Date(when).toISOString()
+    retryAt
   });
+  return retry;
 }
 
+function buildNoButtonNotificationOptions(options, retry) {
+  const retryAttempt = Number(options.retryAttempt || 0);
+  return {
+    retry,
+    retryScheduled: retry?.scheduled === true,
+    afterRetry: retryAttempt > 0 || retry?.reason === "max_attempts"
+  };
+}
 function shouldRetryResult(result) {
   return [
     ATTENDANCE_STATUSES.NO_BUTTON,
